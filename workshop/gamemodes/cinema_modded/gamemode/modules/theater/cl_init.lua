@@ -225,7 +225,6 @@ function ToggleCaptions()
 
 	local js = [[
 		toggleCaptions();
-		exTheater.print( "Toggle Captions" );
 	]]
 	for _, p in pairs(Panels) do
 		if IsValid(p) then

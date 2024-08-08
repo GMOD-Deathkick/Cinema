@@ -9,7 +9,9 @@ SERVICE.ExtentedVideoInfo = true
 
 -- Don't use the domains of the other Services.
 local excludedDomains = {
-	GetConVar("cinema_url_search"):GetString(),
+	--GetConVar("cinema_url_search"):GetString(),
+	"dopebox.to",
+	"deathkick.net",
 	"youtu.?be[.com]?",
 	"bilibili.com",
 	"b23.tv",

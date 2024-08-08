@@ -201,7 +201,6 @@ function SERVICE:GetVideoInfo( data, onSuccess, onFailure )
                 info.title = string.match(body, '<h2 class="heading%-name"><a%s+href="[^"]+">([^<]+)</a>')
                 info.duration = tonumber( string.match(body, '<span%s+class="duration">[%s]*(%d+)%s*min</span>') ) * 60
                 if onSuccess then
-                    PrintTable( info )
                     pcall(onSuccess, info)
                 end
             end, 

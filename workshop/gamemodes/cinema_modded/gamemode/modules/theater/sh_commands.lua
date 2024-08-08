@@ -34,8 +34,6 @@ if CLIENT then
 			RunConsoleCommand( "cinema_volume", 100 )
 		else
 			theater.SetVolume(new)
-
-			PrintTable( theater )
 		end
 	end)
 

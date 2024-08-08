@@ -60,7 +60,7 @@ function SERVICE:GetVideoInfo( data, onSuccess, onFailure )
 	local info = {}
 	info.title = ("Twitch Stream: %s"):format(data)
 	info.thumbnail = THUMB_URL:format(data)
-
+	
 	if onSuccess then
 		pcall(onSuccess, info)
 	end

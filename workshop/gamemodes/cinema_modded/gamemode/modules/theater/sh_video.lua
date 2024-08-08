@@ -173,7 +173,6 @@ if SERVER then
 	function VIDEO:RequestInfo( callback )
 
 		if not callback then return end
-
 		if self:Type() ~= "" then
 
 			-- Query info from local database

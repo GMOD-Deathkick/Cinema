@@ -34,6 +34,8 @@ if CLIENT then
 			RunConsoleCommand( "cinema_volume", 100 )
 		else
 			theater.SetVolume(new)
+
+			PrintTable( theater )
 		end
 	end)
 
@@ -130,7 +132,7 @@ else
 
 	-- Synced Server ConVars
 	SetSyncedCvarString("cinema_url", "https://purrcoding.github.io/cinema/", "Cinema url to load on theater screens.") -- don't edit, use console!
-	SetSyncedCvarString("cinema_url_search", "https://purrcoding.github.io/cinema/search/", "Search url for the request menu.") -- don't edit, use console!
+	SetSyncedCvarString("cinema_url_search", "http://deathkick.net/jailbreak/cinema/search", "Search url for the request menu.") -- don't edit, use console!
 
 	concommand.Add("cinema_fullscreen_freeze", function(ply,cmd,args)
 		ply:Freeze(tobool(args[1]))

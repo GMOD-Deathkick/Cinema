@@ -221,6 +221,24 @@ function SetVolume( fVolume )
 
 end
 
+function ToggleCaptions()
+
+	local js = [[
+		toggleCaptions();
+		exTheater.print( "Toggle Captions" );
+	]]
+	for _, p in pairs(Panels) do
+		if IsValid(p) then
+			p:QueueJavascript(js)
+		end
+	end
+
+end
+
+concommand.Add( "cinema_captions", function( ply )
+	ToggleCaptions()
+end )
+
 function PollServer()
 
 	-- Prevent spamming requests
@@ -294,6 +312,7 @@ function ReceiveSeek()
 	PollServer()
 
 end
+
 net.Receive( "TheaterSeek", ReceiveSeek )
 
 function ReceiveMetadataJob()

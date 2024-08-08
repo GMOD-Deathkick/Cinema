@@ -101,8 +101,12 @@ if CLIENT then
 		}
 	]]
 
-	function SERVICE:LoadExFunctions(panel)
-		panel:QueueJavascript(THEATER_INTERFACE)
+	function SERVICE:LoadExFunctions(panel, dope )
+		if dope then 
+			panel:QueueJavascript(dope)
+		else
+			panel:QueueJavascript(THEATER_INTERFACE)
+		end
 
 		panel:AddFunction( "exTheater", "controllerReady", function(data)
 
@@ -111,6 +115,9 @@ if CLIENT then
 			)
 
 		end )
+		panel:AddFunction("exTheater", "print", function(message)
+			print("[JavaScript] " .. message)  -- This prints the message to the GMod console
+		end)
 	end
 
 	function SERVICE:LoadVideo( Video, panel )

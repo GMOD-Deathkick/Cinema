@@ -140,6 +140,22 @@ if (CLIENT) then
 	end
 end
 
+local function extractDataIds(html)
+    local dataIds = { vidcloud = {} }
+    
+    -- Loop through each line of the HTML
+    
+    for dataId, serverName in string.gmatch(html, 'data%-id="(%d+)"[^\n]*\n*[^<]*<span>([^<]+)</span>') do
+        print( a, span )
+        if span == "UpCloud" or span == "Vidcloud" then
+            
+            table.insert(dataIds.vidcloud, a)
+        end
+    end
+    
+    return dataIds
+end
+
 function SERVICE:GetURLInfo( url )
 
     local info = {}
@@ -153,8 +169,12 @@ function SERVICE:GetURLInfo( url )
         http.Fetch( "https://dopebox.to/ajax/movie/episodes/" .. dataID, 
         function( body )
             --"://"
-            local pattern = '<a data%-id="(%d+)"%s+id="watch%-%d+"%s+href="javascript:;"%s+class="btn btn%-block btn%-play link%-item">%s*<i class="fas fa%-play"></i>Server%s*<span>Vidcloud</span>%s*</a>'
-            local deepdataID = string.match(body, pattern)
+            local ids = extractDataIds( body )
+            if not ids.vidcloud then return end
+
+            local deepdataID = table.Random( ids.vidcloud )
+            PrintTable( ids.vidcloud )
+
             if not deepdataID then return end
             http.Fetch("https://dopebox.to/ajax/get_link/" .. deepdataID, 
             function(body) 

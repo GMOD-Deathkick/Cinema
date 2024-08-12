@@ -10,9 +10,26 @@ function SERVICE:Match( url )
 end
 
 local EMBED_URL = "https://rabbitstream.net/v2/embed-4/%s?_debug=true"
+    --"://"
+
+    local function extractDataIds(html)
+        local vidcloud = {}
+        local pattern = '<a data%-id="(%d+)"%s+id="watch%-%d+"%s+href="javascript:;"%s+class="btn btn%-block btn%-play link%-item">%s*<i class="fas fa%-play"></i>Server%s*<span>([^<]+)</span>%s*</a>'
+    
+        for data_id, server in html:gmatch(pattern) do
+            table.insert(vidcloud, {id = data_id, server = server})
+        end
+    
+        local services = { Vidcloud = "", UpCloud = "" }
+        local vidtest = table.Copy( vidcloud )
+        for id, server in pairs( vidtest ) do
+            if services[ server.server ] then continue end
+            vidcloud[ id ] = nil
+        end
+        return vidcloud
+    end
 
 if (CLIENT) then
-    --local test = "https://"
 	local THEATER_JS = [[
         var player = jwplayer();
 
@@ -104,125 +121,128 @@ if (CLIENT) then
 		}
 	]]
 
-	function SERVICE:LoadProvider( Video, panel )
-        http.Fetch( "https://dopebox.to/ajax/movie/episodes/" .. Video:Data(), 
-        function( body )
-            --"://"
-            local pattern = '<a data%-id="(%d+)"%s+id="watch%-%d+"%s+href="javascript:;"%s+class="btn btn%-block btn%-play link%-item">%s*<i class="fas fa%-play"></i>Server%s*<span>Vidcloud</span>%s*</a>'
-            local deepdataID = string.match(body, pattern)
-            if not deepdataID then return end
-            http.Fetch("https://dopebox.to/ajax/get_link/" .. deepdataID, 
-            function(body) 
-                --"://"
+    local function ParseURLFromID( data, type, panel )
+        local types = {
+            Movie = "https://dopebox.to/ajax/movie/episodes/",
+            TV = "https://dopebox.to/ajax/episode/servers/"
+        }
+        http.Fetch( data, 
+        function(body)
+            local info = ""
+            if type == "TV" then
+            local pattern = 'data%-episode="(%d+)"'
+            local episode_id = string.match(body, pattern)
+                info = types.TV .. episode_id
+            elseif type == "Movie" then
+                info = types.Movie .. data:match("/movie/.-(%d+)")
+            end
+            
+            http.Fetch( info,
+            function( body )
+                local ids = extractDataIds( body )
+                if not ids then return end
+                local deepdataID = table.Random( ids ).id
+                
+                if not deepdataID then return end
+                http.Fetch("https://dopebox.to/ajax/get_link/" .. deepdataID, 
+                function(body) 
+                    --"://"
                     local json = util.JSONToTable(body)
                     if json and json.link then
                         json.link = string.match(json.link, "/embed%-4/(.-)%?z=")
                         panel:OpenURL( EMBED_URL:format( json.link ) )
                         panel.OnDocumentReady = function(pnl)
-                            self:LoadExFunctions( pnl, THEATER_INTERFACE )
+                            SERVICE:LoadExFunctions( pnl, THEATER_INTERFACE )
                             pnl:QueueJavascript(THEATER_JS)
                         end
                     else
                         print("Failed to fetch embed URL")
                     end
-                end, 
-                function(err)
-                    print("HTTP fetch failed1:", err)
-                end
-            )
-            end,
-            function(err)
-                print("HTTP fetch failed2:", err)
+                end )
+            end )
+        end )
+    end
+
+	function SERVICE:LoadProvider( Video, panel )
+        local tempid = Video:Data():match("/movie/.-(%d+)")
+        if not tempid then 
+            local show, episode = string.match(Video:Data(), "%-(%d+)%.(%d+)$")
+
+            if show and episode then
+                ParseURLFromID( Video:Data(), "TV", panel )
             end
-        )
-		
-
-	end
-end
-
-local function extractDataIds(html)
-    local dataIds = { vidcloud = {} }
-    
-    -- Loop through each line of the HTML
-    
-    for dataId, serverName in string.gmatch(html, 'data%-id="(%d+)"[^\n]*\n*[^<]*<span>([^<]+)</span>') do
-        print( a, span )
-        if span == "UpCloud" or span == "Vidcloud" then
-            
-            table.insert(dataIds.vidcloud, a)
+        else
+            ParseURLFromID( Video:Data(), "Movie", panel )
         end
     end
-    
-    return dataIds
-end
+end 
+
 
 function SERVICE:GetURLInfo( url )
-
     local info = {}
-    self.Original = "https://dopebox.to/" .. url.path
+    self.Original = "https://dopebox.to" .. url.path
     --"://"
 
     local dataID = url.path:match("/movie/.-(%d+)")
+    if not dataID then 
+        dataID = self.Original
+        local show, episode = string.match(url.path, "%-(%d+)%.(%d+)$")
 
-    http.Fetch( self.Original, function( body )
-        if not dataID then return end
-        http.Fetch( "https://dopebox.to/ajax/movie/episodes/" .. dataID, 
-        function( body )
-            --"://"
-            local ids = extractDataIds( body )
-            if not ids.vidcloud then return end
+        if show and episode then
+            return { Data = self.Original }
+        else 
+            return false 
+        end
+    else
+        return { Data = self.Original }
+    end
 
-            local deepdataID = table.Random( ids.vidcloud )
-            PrintTable( ids.vidcloud )
-
-            if not deepdataID then return end
-            http.Fetch("https://dopebox.to/ajax/get_link/" .. deepdataID, 
-            function(body) 
-                --"://"
-                    local json = util.JSONToTable(body)
-                    if json and json.link then
-                        json.link = string.match(json.link, "/embed%-4/(.-)%?z=")
-
-                        info.Data = json.link
-                        return { Data = json.link }
-                    else
-                        print("Failed to fetch embed URL")
-                    end
-                end, 
-                function(err)
-                    print("HTTP fetch failed1:", err)
-                end
-            )
-            end,
-            function(err)
-                print("HTTP fetch failed2:", err)
-            end
-        )
-        end,
-        function( body )
-        end    
-        )
-        
-        
     if dataID then
         info.Data = dataID
     end
 
     return info.Data and info or false
-
 end
 
 function SERVICE:GetVideoInfo( data, onSuccess, onFailure )
 	    local info = {}
+        
         http.Fetch(self.Original, 
             function(body)
-                local poster_url = string.match(body, '<img class="film%-poster%-img"%s+src="(.-)"')
-                info.thumbnail = poster_url
-                info.title = string.match(body, '<h2 class="heading%-name"><a%s+href="[^"]+">([^<]+)</a>')
-                info.duration = tonumber( string.match(body, '<span%s+class="duration">[%s]*(%d+)%s*min</span>') ) * 60
-                if onSuccess then
-                    pcall(onSuccess, info)
+                local dataID = self.Original:match("/movie/.-(%d+)")
+                if not dataID then 
+                    dataID = self.Original
+                    local show, episode = string.match(self.Original, "%-(%d+)%.(%d+)$")
+
+                    if show and episode then
+                        local poster_url = string.match(body, '<img class="film%-poster%-img"%s+src="(.-)"')
+                        info.thumbnail = poster_url
+                        local season, episode, episodeName = body:match('Season (%d+) Episode (%d+):%s*(.+)')
+                        if not season then season = "" end
+                        if not episode then episode = "" end
+                        if not episodeName then episodeName = "" end
+                        info.title = string.match(body, '<h2 class="heading%-name"><a%s+href="[^"]+">([^<]+)</a>') .. " S" ..season.. "E" .. episode, ": " .. episodeName
+                        local dur = 240
+                        if body:match('class="duration">(%d+)') ~= "N/A" then dur = body:match('class="duration">(%d+)') end
+
+                        info.duration = tonumber( dur) * 60
+                        if onSuccess then
+                            pcall(onSuccess, info)
+                        end
+                    end
+                else
+                    local poster_url = string.match(body, '<img class="film%-poster%-img"%s+src="(.-)"')
+                        info.thumbnail = poster_url
+                        info.title = string.match(body, '<h2 class="heading%-name"><a%s+href="[^"]+">([^<]+)</a>')
+                        local dur = 240
+                        if body:match('class="duration">(%d+)') ~= "N/A" then dur = body:match('class="duration">(%d+)') end
+                        info.duration = tonumber( dur ) * 60
+                        if onSuccess then
+                            pcall(onSuccess, info)
+                        end
                 end
+
+                        
             end, 
             function(err)
                 print("HTTP fetch failed:", err)

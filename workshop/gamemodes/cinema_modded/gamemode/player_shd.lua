@@ -43,7 +43,7 @@ function GM:OnPlayerChat( player, strText, bTeamOnly, bPlayerIsDead )
 	table.insert( tab, Color( 255, 255, 255 ) )
 	table.insert( tab, ": " .. strText )
 
-	chat.AddText( unpack(tab) )
+	deathkick.ChatAddText( unpack(tab) )
 
 	return true
 

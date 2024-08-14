@@ -101,9 +101,9 @@ if CLIENT then
 		}
 	]]
 
-	function SERVICE:LoadExFunctions(panel, dope )
-		if dope then 
-			panel:QueueJavascript(dope)
+	function SERVICE:LoadExFunctions( panel, custom )
+		if custom then 
+			panel:QueueJavascript(custom)
 		else
 			panel:QueueJavascript(THEATER_INTERFACE)
 		end
@@ -127,7 +127,7 @@ if CLIENT then
 		if self.LoadProvider then
 			self:LoadProvider(Video, panel)
 		end
-
+		if panel.dur then Video:SetDuration( panel.dur ) end
 	end
 
 end

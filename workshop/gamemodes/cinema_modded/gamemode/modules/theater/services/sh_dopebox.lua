@@ -116,7 +116,7 @@ if (CLIENT) then
 				}
 
 			};
-            window.dopebox = true;
+            
 			window.theater = new CinemaPlayer();
 		}
 	]]

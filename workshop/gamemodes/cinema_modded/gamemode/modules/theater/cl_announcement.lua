@@ -5,7 +5,8 @@ function AddAnnouncement( tbl )
 
 	local key = table.remove(tbl, 1)
 	local values = translations:FormatChat( key, unpack(tbl) )
-	chat.AddText( ColDefault, unpack(values) )
+	deathkick.ChatAddText( ColDefault, unpack(values) )
+	print( "tried" )
 end
 
 net.Receive( "TheaterAnnouncement", function()

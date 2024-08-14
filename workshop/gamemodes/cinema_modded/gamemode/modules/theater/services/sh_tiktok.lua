@@ -1,137 +1,130 @@
-local b = ""
---[[
-
-    function getTikTokVideoId(url) {
-        let regex = /tiktok\.com\/.*\/video\/(\d+)(?:\?|$)/;
-        let match = url.match(regex);
-        return match ? match[1] : null;
-    }
-
-    // Function to get the TikTok embed code using oEmbed API
-    function getTikTokEmbedData(url) {
-        return fetch(`https://www.tiktok.com/oembed?url=${encodeURIComponent(url)}`)
-            .then(response => response.json());
-    }
-
-    // Function to create the TikTok embed and autoplay the video
-    function createTikTokEmbed(videoId, title) {
-        // Clear the body
-        document.body.innerHTML = '';
-
-        // Create header for title
-        let header = document.createElement('div');
-        header.style.position = 'fixed';
-        header.style.top = '0';
-        header.style.left = '0';
-        header.style.width = '100vw';
-        header.style.padding = '10px';
-        header.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
-        header.style.color = 'white';
-        header.style.fontSize = '18px';
-        header.style.zIndex = '1001';
-        header.innerText = title;
-        document.body.appendChild(header);
-
-        // Create the current time and duration display
-        let timeDisplay = document.createElement('div');
-        timeDisplay.style.position = 'fixed';
-        timeDisplay.style.top = '0';
-        timeDisplay.style.right = '10px';
-        timeDisplay.style.padding = '10px';
-        timeDisplay.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
-        timeDisplay.style.color = 'white';
-        timeDisplay.style.fontSize = '18px';
-        timeDisplay.style.zIndex = '1002';
-        timeDisplay.innerText = '0:00 / 0:00';
-        document.body.appendChild(timeDisplay);
-
-        // Create the TikTok embed iframe
-        let iframe = document.createElement('iframe');
-        iframe.src = `https://www.tiktok.com/player/v1/${videoId}?controls=0&autoplay=1&fullscreen_button=0&play_button=0&volume_control=0&timestamp=0&loop=1&description=0&music_info=0&rel=0`;
-        iframe.style.position = 'fixed';
-        iframe.style.top = '0';
-        iframe.style.left = '0';
-        iframe.style.width = '100vw';
-        iframe.style.height = '100vh';
-        iframe.style.zIndex = '999';
-        iframe.style.border = 'none';
-        iframe.allow = 'autoplay; fullscreen';
-        document.body.appendChild(iframe);
-
-        // Function to update the current time and duration
-        function updateTimeDisplay(currentTime, duration) {
-            let currentMinutes = Math.floor(currentTime / 60);
-            let currentSeconds = Math.floor(currentTime % 60);
-            let durationMinutes = Math.floor(duration / 60);
-            let durationSeconds = Math.floor(duration % 60);
-            timeDisplay.innerText = `${currentMinutes}:${currentSeconds.toString().padStart(2, '0')} / ${durationMinutes}:${durationSeconds.toString().padStart(2, '0')}`;
-        }
-
-        // Listen for messages from the iframe to update the current time and duration
-        window.addEventListener('message', (event) => {
-            if (event.data && event.data['x-tiktok-player']) {
-                switch (event.data.type) {
-                    case 'onCurrentTime':
-                        updateTimeDisplay(event.data.value.currentTime, event.data.value.duration);
-                        break;
-                }
-            }
-        });
-    }
-
-    // Add an event listener to the button
-    button.addEventListener('click', function() {
-        let url = inputBox.value;
-        let videoId = getTikTokVideoId(url);
-        if (videoId) {
-            getTikTokEmbedData(url).then(data => {
-                createTikTokEmbed(videoId, data.title);
-            }).catch(() => alert('Invalid TikTok URL or video unavailable'));
-        } else {
-            alert('Invalid TikTok URL');
-        }
-    });
-})();
-
-]]
-
 local SERVICE = {}
 
 SERVICE.Name = "Tiktok"
 SERVICE.IsTimed = true
 
 SERVICE.Dependency = DEPENDENCY_COMPLETE
+SERVICE.ExtentedVideoInfo = true
 
 function SERVICE:Match( url )
 	return url.host and url.host:match("www.tiktok.com")
 end
 
-local EMBED_URL = ""
+local EMBED_URL = "https://www.tiktok.com/player/v1/%s?controls=0&autoplay=1&fullscreen_button=0&play_button=0&volume_control=0&timestamp=0&loop=0&description=0&music_info=0&rel=0" 
+local API_URL = "https://www.tiktok.com/oembed?url=%s"
+    -- "://"
 
-if (CLIENT) then    
+if (CLIENT) then 
 	local THEATER_JS = [[ 
-
-        setInterval(function() { }, 100);
+          
+        setInterval(function() { 
+            document.querySelector('video').setAttribute('controls', '');
+            document.querySelector('video').muted = false;
+            window.cinema_controller = document.querySelector('video');
+            exTheater.controllerReady();
+        }, 100);
 
     ]]
 
     function SERVICE:LoadProvider( Video, panel )
-        print( "this ran 2" )
+        panel:OpenURL( EMBED_URL:format( Video:Data():match("/@[%a%w%d%_%.]+/video/(%d+)$") ) )
+        panel.OnDocumentReady = function(pnl)
+            SERVICE:LoadExFunctions( pnl, THEATER_INTERFACE )
+            pnl:QueueJavascript(THEATER_JS)
+        end
     end
+
+    function SERVICE:GetMetadata( data, callback )        
+		local panel = vgui.Create("DHTML")
+		panel:SetMouseInputEnabled(false)
+
+		panel.OnDocumentReady = function(pnl)
+
+            local METADATA_JS = [[
+                const convertToSeconds = time => {
+                    const [minutes, seconds] = time.split(':').map(Number);
+                    return (minutes * 60) + seconds;
+                };
+                
+                // Check and return the value when conditions are met
+                const checkSeekBarTime = () => {
+                    const seekBarTimeDiv = Array.from(document.querySelectorAll('div'))
+                        .find(div => /DivSeekBarTimeContainer/.test(div.className));
+                
+                    if (seekBarTimeDiv) {
+                        const [ , endTime ] = seekBarTimeDiv.textContent.split('/').map(s => s.trim());
+                        const totalSeconds = convertToSeconds(endTime);
+                
+                        if (totalSeconds > 1) {
+                            console.log("CINEMA: " + totalSeconds);
+                        }
+                    }
+                };
+                var timeout = 50;
+                var i = 0;
+                setInterval(function() { 
+                    if ( i >= timeout ) { console.log( "CINEMA: Terminate" ); }
+                    document.querySelector('video').setAttribute('controls', '');
+                    document.querySelector('video').muted = true;
+                    checkSeekBarTime();
+                    i = i + 1;
+                }, 100);
+            ]]
+            
+                pnl:QueueJavascript(METADATA_JS)
+		end
+
+		function panel:ConsoleMessage( msg )
+                if not string.StartsWith( msg, "CINEMA: " ) then print( msg ) return end
+                
+                local seconds = string.sub( msg, 9, string.len( msg ) )
+				callback( { dur = seconds } )
+				panel:Remove()
+		end
+
+        panel:OpenURL( data )
+	end
 end
 
 function SERVICE:GetURLInfo( url )
+    
     local info = {}
     if url.path then
-		local data = url.path:match("/@[%w%.]+/video/(%d+)$")
-        print( data )
-		if data and data ~= nil then return { Data = data } end
+		local data = url.path:match("/@[%a%w%d%_%.]+/video/(%d+)$")
+		if data and data ~= nil then return { Data = url.host .. url.path } end
 	end
 
     return false  
 end
 
+    -- "://"
 function SERVICE:GetVideoInfo( data, onSuccess, onFailure )
-    print( "this ran part 3" )
-    return false
+    theater.FetchVideoMedata( data:GetOwner(), data, 
+    
+    function(metadata)
+        if not isnumber( tonumber( metadata.dur ) ) or tonumber( metadata.dur ) < 1 then pcall(onFailure, "Duration Not Found" ) return end
+        http.Fetch( API_URL:format( "https://" .. data:Data() ), 
+        function( body ) 
+            -- "://"
+            local json = util.JSONToTable( body )
+            if json then
+                local info = {
+                    title = "coming soon",
+                    thumbnail = "about:blank",
+                }
+                info.title = string.sub( json.title, 1, 42 )
+                info.thumbnail = json.thumbnail_url
+                info.duration = tonumber( metadata.dur )+2
+                if onSuccess then
+                    pcall(onSuccess, info)
+                end
+            end
+        end ) 
+        
+        
+    end )
+    
+    
 end
+
+theater.RegisterService( "tiktok", SERVICE )

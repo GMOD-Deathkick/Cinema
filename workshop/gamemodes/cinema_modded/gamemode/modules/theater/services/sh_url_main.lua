@@ -11,6 +11,9 @@ SERVICE.ExtentedVideoInfo = true
 local excludedDomains = {
 	--GetConVar("cinema_url_search"):GetString(),
 	"dopebox.to",
+	"tiktok.com",
+	"soundcloud.com",
+	"www.tiktok.com",
 	"deathkick.net",
 	"youtu.?be[.com]?",
 	"bilibili.com",
